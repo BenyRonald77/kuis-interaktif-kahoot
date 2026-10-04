@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Quiz {
+  id                Int          @id @default(autoincrement())
+  pin               String       @unique
+  title             String
+  status            String       @default("lobby") // lobby | question | leaderboard | finished
+  currentQuestionId Int?
+  currentRoundId    Int?
+  createdAt         BigInt       @default(0)
+  questions         Question[]
+  participants      Participant[]
+  rounds            Round[]
+}
+
+model Question {
+  id              Int    @id @default(autoincrement())
+  quizId          Int
+  quiz            Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order           Int
+  text            String
+  options         String // JSON-encoded string[]
+  correctIndex    Int
+  durationSeconds Int
+  rounds          Round[]
+
+  @@unique([quizId, order])
+}
+
+model Participant {
+  id       Int      @id @default(autoincrement())
+  quizId   Int
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  name     String
+  joinedAt BigInt   @default(0)
+  answers  Answer[]
+
+  @@unique([quizId, name])
+}
+
+model Round {
+  id          Int         @id @default(autoincrement())
+  quizId      Int
+  quiz        Quiz        @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionId  Int
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  status      String      @default("active") // active | locked
+  startedAtMs BigInt
+  endsAtMs    BigInt
+  answers     Answer[]
+
+  @@unique([quizId, questionId])
+}
+
+model Answer {
+  id            Int         @id @default(autoincrement())
+  roundId       Int
+  round         Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participantId Int
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  selectedIndex Int
+  correct       Boolean
+  score         Int
+  answeredAtMs  BigInt
+
+  @@unique([roundId, participantId])
+}
